@@ -8,7 +8,9 @@ import {
   CardContent,
   List,
   ListItem,
-  ListItemText
+  ListItemText,
+  Chip,
+  Divider
 } from '@mui/material';
 import {
   Chart as ChartJS,
@@ -21,6 +23,12 @@ import {
   ArcElement
 } from 'chart.js';
 import { Bar, Doughnut } from 'react-chartjs-2';
+import { 
+  TrendingUp, 
+  People, 
+  LibraryBooks, 
+  AccountBalance 
+} from '@mui/icons-material';
 
 ChartJS.register(
   CategoryScale,
@@ -39,8 +47,9 @@ const AnalyticsDashboard = () => {
     datasets: [
       {
         label: 'Books Checked Out',
-        data: [65, 59, 80, 81, 56, 55],
-        backgroundColor: 'rgba(75, 192, 192, 0.6)',
+        data: [65, 78, 82, 79, 85, 90],
+        backgroundColor: 'rgba(63, 81, 181, 0.8)',
+        borderRadius: 4,
       }
     ]
   };
@@ -52,119 +61,169 @@ const AnalyticsDashboard = () => {
         label: 'Books Borrowed',
         data: [450, 320, 280, 210, 180],
         backgroundColor: [
-          'rgba(255, 99, 132, 0.6)',
-          'rgba(54, 162, 235, 0.6)',
-          'rgba(255, 206, 86, 0.6)',
-          'rgba(75, 192, 192, 0.6)',
-          'rgba(153, 102, 255, 0.6)',
+          'rgba(63, 81, 181, 0.8)',
+          'rgba(33, 150, 243, 0.8)',
+          'rgba(0, 188, 212, 0.8)',
+          'rgba(76, 175, 80, 0.8)',
+          'rgba(255, 152, 0, 0.8)',
         ],
+        borderWidth: 0,
       }
     ]
   };
 
+  const chartOptions = {
+    responsive: true,
+    plugins: {
+      legend: {
+        position: 'top',
+      },
+    },
+  };
+
+  const doughnutOptions = {
+    responsive: true,
+    plugins: {
+      legend: {
+        position: 'bottom',
+      },
+    },
+  };
+
   const popularBooks = [
-    { title: 'Introduction to Algorithms', borrowCount: 150 },
-    { title: 'Computer Architecture', borrowCount: 120 },
-    { title: 'Data Structures', borrowCount: 95 },
-    { title: 'Operating Systems', borrowCount: 87 },
-    { title: 'Database Systems', borrowCount: 76 }
+    { title: 'Introduction to Algorithms', borrowCount: 150, status: 'High Demand' },
+    { title: 'Computer Architecture', borrowCount: 120, status: 'High Demand' },
+    { title: 'Data Structures', borrowCount: 95, status: 'Medium Demand' },
+    { title: 'Operating Systems', borrowCount: 87, status: 'Medium Demand' },
+    { title: 'Database Systems', borrowCount: 76, status: 'Medium Demand' }
   ];
 
   return (
-    <Grid container spacing={3}>
-      {/* Key Metrics */}
-      <Grid item xs={12} md={3}>
-        <Card>
-          <CardContent>
-            <Typography color="textSecondary" gutterBottom>
-              Total Books
-            </Typography>
-            <Typography variant="h4">
-              2,847
-            </Typography>
-          </CardContent>
-        </Card>
-      </Grid>
-      <Grid item xs={12} md={3}>
-        <Card>
-          <CardContent>
-            <Typography color="textSecondary" gutterBottom>
-              Active Borrowers
-            </Typography>
-            <Typography variant="h4">
-              1,234
-            </Typography>
-          </CardContent>
-        </Card>
-      </Grid>
-      <Grid item xs={12} md={3}>
-        <Card>
-          <CardContent>
-            <Typography color="textSecondary" gutterBottom>
-              Books Checked Out
-            </Typography>
-            <Typography variant="h4">
-              389
-            </Typography>
-          </CardContent>
-        </Card>
-      </Grid>
-      <Grid item xs={12} md={3}>
-        <Card>
-          <CardContent>
-            <Typography color="textSecondary" gutterBottom>
-              Fines Collected
-            </Typography>
-            <Typography variant="h4">
-              2,847
-            </Typography>
-          </CardContent>
-        </Card>
-      </Grid>
+    <Box>
+      <Grid container spacing={3}>
+        {/* Key Metrics */}
+        <Grid item xs={12} sm={6} md={3}>
+          <Card sx={{ height: '100%' }}>
+            <CardContent sx={{ textAlign: 'center' }}>
+              <LibraryBooks sx={{ fontSize: 40, color: 'primary.main', mb: 1 }} />
+              <Typography variant="h4" fontWeight="bold" gutterBottom>
+                2,847
+              </Typography>
+              <Typography variant="body2" color="textSecondary">
+                Total Books
+              </Typography>
+            </CardContent>
+          </Card>
+        </Grid>
 
-      {/* Charts */}
-      <Grid item xs={12} md={8}>
-        <Paper sx={{ p: 3 }}>
-          <Typography variant="h6" gutterBottom>
-            Monthly Usage Statistics
-          </Typography>
-          <Bar data={monthlyData} />
-        </Paper>
-      </Grid>
+        <Grid item xs={12} sm={6} md={3}>
+          <Card sx={{ height: '100%' }}>
+            <CardContent sx={{ textAlign: 'center' }}>
+              <People sx={{ fontSize: 40, color: 'secondary.main', mb: 1 }} />
+              <Typography variant="h4" fontWeight="bold" gutterBottom>
+                1,234
+              </Typography>
+              <Typography variant="body2" color="textSecondary">
+                Active Borrowers
+              </Typography>
+            </CardContent>
+          </Card>
+        </Grid>
 
-      <Grid item xs={12} md={4}>
-        <Paper sx={{ p: 3 }}>
-          <Typography variant="h6" gutterBottom>
-            Department Engagement
-          </Typography>
-          <Doughnut data={departmentData} />
-        </Paper>
-      </Grid>
+        <Grid item xs={12} sm={6} md={3}>
+          <Card sx={{ height: '100%' }}>
+            <CardContent sx={{ textAlign: 'center' }}>
+              <TrendingUp sx={{ fontSize: 40, color: 'success.main', mb: 1 }} />
+              <Typography variant="h4" fontWeight="bold" gutterBottom>
+                389
+              </Typography>
+              <Typography variant="body2" color="textSecondary">
+                Books Checked Out
+              </Typography>
+            </CardContent>
+          </Card>
+        </Grid>
 
-      {/* Popular Books */}
-      <Grid item xs={12}>
-        <Paper sx={{ p: 3 }}>
-          <Typography variant="h6" gutterBottom>
-            Most Popular Books
-          </Typography>
-          <List>
-            {popularBooks.map((book, index) => (
-              <ListItem key={index}>
-                <ListItemText
-                  primary={book.title}
-                  secondary={`Borrowed ${book.borrowCount} times`}
-                />
-                {index === 0 && (
-                  <Box sx={{ bgcolor: 'warning.main', color: 'white', px: 1, borderRadius: 1 }}>
-                    High Demand
-                  </Box>
-                )}
-              </ListItem>
-            ))}
-          </List>
-        </Paper>
+        <Grid item xs={12} sm={6} md={3}>
+          <Card sx={{ height: '100%' }}>
+            <CardContent sx={{ textAlign: 'center' }}>
+              <AccountBalance sx={{ fontSize: 40, color: 'warning.main', mb: 1 }} />
+              <Typography variant="h4" fontWeight="bold" gutterBottom>
+                2,847
+              </Typography>
+              <Typography variant="body2" color="textSecondary">
+                Fines Collected
+              </Typography>
+            </CardContent>
+          </Card>
+        </Grid>
+
+        {/* Charts Section */}
+        <Grid item xs={12} md={8}>
+          <Paper sx={{ p: 3, height: '400px' }}>
+            <Typography variant="h6" gutterBottom sx={{ display: 'flex', alignItems: 'center' }}>
+              <TrendingUp sx={{ mr: 1 }} />
+              Monthly Usage Statistics
+            </Typography>
+            <Box sx={{ height: '320px' }}>
+              <Bar 
+                data={monthlyData} 
+                options={chartOptions}
+              />
+            </Box>
+          </Paper>
+        </Grid>
+
+        <Grid item xs={12} md={4}>
+          <Paper sx={{ p: 3, height: '400px' }}>
+            <Typography variant="h6" gutterBottom>
+              Department Engagement
+            </Typography>
+            <Box sx={{ height: '320px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              <Doughnut 
+                data={departmentData} 
+                options={doughnutOptions}
+              />
+            </Box>
+          </Paper>
+        </Grid>
+
+        {/* Popular Books Section */}
+        <Grid item xs={12}>
+          <Paper sx={{ p: 3 }}>
+            <Typography variant="h6" gutterBottom>
+              Most Popular Books
+            </Typography>
+            <List sx={{ py: 0 }}>
+              {popularBooks.map((book, index) => (
+                <React.Fragment key={index}>
+                  <ListItem sx={{ px: 0, py: 2 }}>
+                    <ListItemText
+                      primary={
+                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, flexWrap: 'wrap' }}>
+                          <Typography variant="subtitle1" fontWeight="medium">
+                            {book.title}
+                          </Typography>
+                          <Chip 
+                            label={book.status} 
+                            color={book.status === 'High Demand' ? 'error' : 'warning'}
+                            size="small"
+                          />
+                        </Box>
+                      }
+                      secondary={`Borrowed ${book.borrowCount} times`}
+                    />
+                  </ListItem>
+                  {index < popularBooks.length - 1 && (
+                    <Divider />
+                  )}
+                </React.Fragment>
+              ))}
+            </List>
+          </Paper>
+        </Grid>
       </Grid>
-    </Grid>
+    </Box>
   );
 };
 
