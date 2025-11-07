@@ -43,7 +43,7 @@ const Login = ({ setUser }) => {
       const userData = {
         email: credentials.email,
         role: credentials.role,
-        name: credentials.role === 'student' ? 'John Doe' : 'Librarian Admin',
+        name: credentials.role === 'student' ? 'Logesh' : 'Librarian Admin',
         id: credentials.role === 'student' ? 1 : 1001
       };
       
