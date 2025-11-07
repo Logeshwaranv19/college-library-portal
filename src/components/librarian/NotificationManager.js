@@ -32,7 +32,8 @@ import {
   Notifications, 
   Send, 
   Warning,
-  CheckCircle
+  CheckCircle,
+  Groups
 } from '@mui/icons-material';
 
 const NotificationManager = () => {
@@ -44,6 +45,7 @@ const NotificationManager = () => {
       studentId: 1,
       studentName: 'Reyaash',
       studentEmail: 'reyaash@gmail.com',
+      studentDepartment: 'IT',
       bookTitle: 'Computer Architecture',
       bookAuthor: 'David A. Patterson',
       dueDate: '2024-01-20',
@@ -56,11 +58,25 @@ const NotificationManager = () => {
       studentId: 2,
       studentName: 'Sanjay',
       studentEmail: 'sanjay@gmail.com',
+      studentDepartment: 'ECE',
       bookTitle: 'Operating System Concepts',
       bookAuthor: 'Abraham Silberschatz',
       dueDate: '2024-01-25',
       daysOverdue: 2,
       fineAmount: 10
+    },
+    {
+      id: 3,
+      bookId: 5,
+      studentId: 3,
+      studentName: 'Priya',
+      studentEmail: 'priya@gmail.com',
+      studentDepartment: 'IT',
+      bookTitle: 'Data Structures',
+      bookAuthor: 'Mark Allen Weiss',
+      dueDate: '2024-01-18',
+      daysOverdue: 7,
+      fineAmount: 15
     }
   ];
 
@@ -78,11 +94,14 @@ const NotificationManager = () => {
   ];
 
   const [openDialog, setOpenDialog] = useState(false);
+  const [openDepartmentDialog, setOpenDepartmentDialog] = useState(false);
   const [selectedStudent, setSelectedStudent] = useState(null);
   const [selectedBook, setSelectedBook] = useState(null);
   const [selectedBorrow, setSelectedBorrow] = useState(null);
+  const [selectedDepartment, setSelectedDepartment] = useState('');
   const [notificationMethod, setNotificationMethod] = useState('email');
   const [customMessage, setCustomMessage] = useState('');
+  const [departmentMessage, setDepartmentMessage] = useState('');
   const [sentNotifications, setSentNotifications] = useState(mockNotificationHistory);
   const [successAlert, setSuccessAlert] = useState('');
   const [errorAlert, setErrorAlert] = useState('');
@@ -91,7 +110,15 @@ const NotificationManager = () => {
 
   const overdueBooks = mockOverdueBooks;
 
-  // Sample email templates - Fixed: removed undefined variables
+  // Get unique departments from overdue books
+  const departments = [...new Set(overdueBooks.map(book => book.studentDepartment))];
+
+  // Get overdue students by department
+  const getOverdueStudentsByDepartment = (department) => {
+    return overdueBooks.filter(book => book.studentDepartment === department);
+  };
+
+  // Sample email templates
   const emailTemplates = {
     gentleReminder: `Dear {student_name},
 
@@ -140,6 +167,23 @@ Your library privileges will be suspended if the book is not returned within 3 d
 Return the book immediately to avoid these consequences.
 
 College Library Administration
+`,
+
+    departmentReport: `Department Overdue Books Report - {department}
+
+Dear {department} Department Head,
+
+The following students from your department have overdue library books that require immediate attention:
+
+{student_list}
+
+Total Overdue Books: {total_count}
+Total Outstanding Fines: {total_fines}
+
+Please advise these students to return their books immediately to avoid further penalties.
+
+Best regards,
+College Library Administration
 `
   };
 
@@ -187,6 +231,37 @@ College Library Administration
     setOpenDialog(true);
   };
 
+  const handleSendDepartmentNotification = () => {
+    if (!selectedDepartment) {
+      setErrorAlert('Please select a department');
+      return;
+    }
+
+    const departmentStudents = getOverdueStudentsByDepartment(selectedDepartment);
+    
+    if (departmentStudents.length === 0) {
+      setErrorAlert(`No overdue books found for ${selectedDepartment} department`);
+      return;
+    }
+
+    // Generate student list for the email
+    const studentList = departmentStudents.map(student => 
+      `• ${student.studentName} (${student.studentEmail}) - "${student.bookTitle}" - Due: ${student.dueDate} - Days Overdue: ${student.daysOverdue} - Fine: ${student.fineAmount}`
+    ).join('\n');
+
+    const totalFines = departmentStudents.reduce((sum, student) => sum + student.fineAmount, 0);
+
+    // Generate department report message
+    const message = emailTemplates.departmentReport
+      .replace(/{department}/g, selectedDepartment)
+      .replace(/{student_list}/g, studentList)
+      .replace(/{total_count}/g, departmentStudents.length)
+      .replace(/{total_fines}/g, totalFines);
+
+    setDepartmentMessage(message);
+    setOpenDepartmentDialog(true);
+  };
+
   // Mock email service function
   const sendEmailNotification = async (studentEmail, studentName, bookDetails) => {
     return new Promise((resolve) => {
@@ -194,6 +269,16 @@ College Library Administration
         console.log(`Email sent to ${studentEmail} for book "${bookDetails.title}"`);
         resolve({ success: true, message: 'Notification sent successfully' });
       }, 1000);
+    });
+  };
+
+  // Mock department email service function
+  const sendDepartmentEmailNotification = async (department, message) => {
+    return new Promise((resolve) => {
+      setTimeout(() => {
+        console.log(`Department email sent for ${department}`);
+        resolve({ success: true, message: 'Department notification sent successfully' });
+      }, 1500);
     });
   };
 
@@ -253,6 +338,47 @@ College Library Administration
       }
     } catch (error) {
       setErrorAlert(`❌ Error sending notification: ${error.message}`);
+    } finally {
+      setSending(false);
+      setTimeout(() => {
+        setSuccessAlert('');
+        setErrorAlert('');
+      }, 5000);
+    }
+  };
+
+  const sendDepartmentNotification = async () => {
+    if (!selectedDepartment) return;
+
+    setSending(true);
+    setErrorAlert('');
+
+    try {
+      const result = await sendDepartmentEmailNotification(selectedDepartment, departmentMessage);
+
+      if (result.success) {
+        // Add to notification history for each student in the department
+        const departmentStudents = getOverdueStudentsByDepartment(selectedDepartment);
+        const newNotifications = departmentStudents.map((student, index) => ({
+          id: sentNotifications.length + index + 1,
+          studentId: student.studentId,
+          bookId: student.bookId,
+          type: 'department_report',
+          message: `Department notification sent for ${selectedDepartment}`,
+          sentDate: new Date().toISOString().split('T')[0],
+          method: 'email',
+          status: 'sent'
+        }));
+        setSentNotifications([...sentNotifications, ...newNotifications]);
+
+        setSuccessAlert(`✅ Department notification sent for ${selectedDepartment} (${departmentStudents.length} students)`);
+        setOpenDepartmentDialog(false);
+        setSelectedDepartment('');
+      } else {
+        setErrorAlert(`❌ Failed to send department notification: ${result.message}`);
+      }
+    } catch (error) {
+      setErrorAlert(`❌ Error sending department notification: ${error.message}`);
     } finally {
       setSending(false);
       setTimeout(() => {
@@ -362,12 +488,74 @@ College Library Administration
                 {sending ? 'Sending...' : `Notify All (${overdueBooks.length})`}
               </Button>
 
+              {/* Department Notification Section */}
+              <Box sx={{ mt: 3, mb: 2 }}>
+                <Typography variant="subtitle1" gutterBottom sx={{ display: 'flex', alignItems: 'center' }}>
+                  <Groups sx={{ mr: 1 }} />
+                  Department Notifications
+                </Typography>
+                
+                <FormControl fullWidth sx={{ mb: 2 }}>
+                  <InputLabel>Select Department</InputLabel>
+                  <Select
+                    value={selectedDepartment}
+                    label="Select Department"
+                    onChange={(e) => setSelectedDepartment(e.target.value)}
+                  >
+                    {departments.map(dept => (
+                      <MenuItem key={dept} value={dept}>
+                        {dept} (
+                          <Typography 
+                            component="span" 
+                            sx={{ 
+                              color: 'green.main', 
+                              fontWeight: 'bold',
+                              fontSize: '0.9rem'
+                            }}
+                          >
+                            {getOverdueStudentsByDepartment(dept).length} overdue
+                          </Typography>
+                        )
+                      </MenuItem>
+                    ))}
+                  </Select>
+                </FormControl>
+
+                <Button
+                  variant="outlined"
+                  startIcon={<Groups />}
+                  onClick={handleSendDepartmentNotification}
+                  fullWidth
+                  disabled={!selectedDepartment || sending}
+                >
+                  Notify Department
+                </Button>
+
+                {selectedDepartment && (
+                  <Box sx={{ mt: 1, p: 1, backgroundColor: 'success.light', borderRadius: 1 }}>
+                    <Typography variant="body2" sx={{ color: 'success.dark' }}>
+                      <strong>{selectedDepartment}:</strong> 
+                      <Typography 
+                        component="span" 
+                        sx={{ 
+                          color: 'success.main', 
+                          fontWeight: 'bold',
+                          ml: 0.5
+                        }}
+                      >
+                        {getOverdueStudentsByDepartment(selectedDepartment).length} overdue books
+                      </Typography>
+                    </Typography>
+                  </Box>
+                )}
+              </Box>
+
               <Box sx={{ mt: 2, p: 2, backgroundColor: 'grey.50', borderRadius: 1 }}>
                 <Typography variant="body2" gutterBottom>
                   <strong>From:</strong> College Library
                 </Typography>
                 <Typography variant="body2">
-                  
+                  <strong>Email:</strong> logeshwaranv19@gmail.com
                 </Typography>
               </Box>
             </CardContent>
@@ -379,15 +567,7 @@ College Library Administration
               <Typography variant="h6" gutterBottom>
                 Quick Templates
               </Typography>
-              <Button
-                variant="outlined"
-                size="small"
-                fullWidth
-                sx={{ mb: 1 }}
-                onClick={() => setCustomMessage(emailTemplates.gentleReminder)}
-              >
-                Gentle Reminder
-              </Button>
+              
               <Button
                 variant="outlined"
                 size="small"
@@ -422,6 +602,7 @@ College Library Administration
                 <TableHead>
                   <TableRow>
                     <TableCell>Student</TableCell>
+                    <TableCell>Department</TableCell>
                     <TableCell>Book</TableCell>
                     <TableCell>Due Date</TableCell>
                     <TableCell>Days Overdue</TableCell>
@@ -442,6 +623,13 @@ College Library Administration
                           <Typography variant="body2" color="textSecondary">
                             {borrow.studentEmail}
                           </Typography>
+                        </TableCell>
+                        <TableCell>
+                          <Chip 
+                            label={borrow.studentDepartment} 
+                            color="primary" 
+                            size="small" 
+                          />
                         </TableCell>
                         <TableCell>
                           <Typography fontWeight="bold">{borrow.bookTitle}</Typography>
@@ -587,6 +775,82 @@ College Library Administration
             disabled={sending}
           >
             {sending ? 'Sending...' : 'Send Email'}
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* Department Notification Dialog */}
+      <Dialog open={openDepartmentDialog} onClose={() => setOpenDepartmentDialog(false)} maxWidth="md" fullWidth>
+        <DialogTitle>
+          <Groups sx={{ mr: 1, verticalAlign: 'middle' }} />
+          Send Department Notification - {selectedDepartment}
+        </DialogTitle>
+        <DialogContent>
+          <Box sx={{ mt: 2 }}>
+            <Alert severity="info" sx={{ mb: 2 }}>
+              This email will be sent to the department head with a list of all overdue students from {selectedDepartment} department.
+            </Alert>
+
+            <TextField
+              fullWidth
+              multiline
+              rows={15}
+              label="Department Report Content"
+              value={departmentMessage}
+              onChange={(e) => setDepartmentMessage(e.target.value)}
+              placeholder="Department overdue report content..."
+              disabled={sending}
+            />
+
+            {selectedDepartment && (
+              <Box sx={{ mt: 2, p: 2, backgroundColor: 'success.light', borderRadius: 1 }}>
+                <Typography variant="subtitle2" gutterBottom sx={{ color: 'success.dark' }}>
+                  Department Summary:
+                </Typography>
+                <Typography variant="body2" sx={{ color: 'success.dark' }}>
+                  <strong>Department:</strong> {selectedDepartment}
+                </Typography>
+                <Typography variant="body2" sx={{ color: 'success.dark' }}>
+                  <strong>Total Overdue Books:</strong> 
+                  <Typography 
+                    component="span" 
+                    sx={{ 
+                      color: 'success.main', 
+                      fontWeight: 'bold',
+                      ml: 0.5
+                    }}
+                  >
+                    {getOverdueStudentsByDepartment(selectedDepartment).length}
+                  </Typography>
+                </Typography>
+                <Typography variant="body2" sx={{ color: 'success.dark' }}>
+                  <strong>Total Fines:</strong> 
+                  <Typography 
+                    component="span" 
+                    sx={{ 
+                      color: 'success.main', 
+                      fontWeight: 'bold',
+                      ml: 0.5
+                    }}
+                  >
+                    {getOverdueStudentsByDepartment(selectedDepartment).reduce((sum, student) => sum + student.fineAmount, 0)}
+                  </Typography>
+                </Typography>
+              </Box>
+            )}
+          </Box>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setOpenDepartmentDialog(false)} disabled={sending}>
+            Cancel
+          </Button>
+          <Button 
+            onClick={sendDepartmentNotification}
+            variant="contained"
+            startIcon={sending ? null : <Send />}
+            disabled={sending}
+          >
+            {sending ? 'Sending...' : 'Send Department Report'}
           </Button>
         </DialogActions>
       </Dialog>
