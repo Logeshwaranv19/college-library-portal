@@ -180,8 +180,8 @@ College Library Administration
       .replace(/{due_date}/g, borrow.dueDate)
       .replace(/{days_overdue}/g, borrow.daysOverdue);
 
-    // Add fine information separately
-    const messageWithFine = `${message}\n\nFine Amount: {borrow.fineAmount}`;
+    // Add fine information without dollar symbol
+    const messageWithFine = `${message}\n\nFine Amount: ${borrow.fineAmount}`;
 
     setCustomMessage(messageWithFine);
     setOpenDialog(true);
@@ -460,7 +460,7 @@ College Library Administration
                         </TableCell>
                         <TableCell>
                           <Typography color="error.main" fontWeight="bold">
-                            ${borrow.fineAmount}
+                            {borrow.fineAmount}
                           </Typography>
                         </TableCell>
                         <TableCell>
@@ -570,7 +570,7 @@ College Library Administration
                   <strong>Days Overdue:</strong> {selectedBorrow.daysOverdue}
                 </Typography>
                 <Typography variant="body2">
-                  <strong>Fine:</strong> ${selectedBorrow.fineAmount}
+                  <strong>Fine:</strong> {selectedBorrow.fineAmount}
                 </Typography>
               </Box>
             )}
