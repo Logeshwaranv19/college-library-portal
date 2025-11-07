@@ -13,13 +13,16 @@ import {
   CardContent,
   CardActions,
   Box,
-  IconButton
+  IconButton,
+  InputAdornment
 } from '@mui/material';
-import { Add, Edit, Delete, LocationOn } from '@mui/icons-material';
+import { Add, Edit, Delete, LocationOn, Search } from '@mui/icons-material';
 import { mockBooks } from '../../data/mockData';
 
 const CatalogManagement = () => {
   const [books, setBooks] = useState(mockBooks);
+  const [filteredBooks, setFilteredBooks] = useState(mockBooks);
+  const [searchQuery, setSearchQuery] = useState('');
   const [openDialog, setOpenDialog] = useState(false);
   const [editingBook, setEditingBook] = useState(null);
   const [newBook, setNewBook] = useState({
@@ -34,13 +37,30 @@ const CatalogManagement = () => {
     department: 'CSE'
   });
 
+  // Search function
+  const handleSearch = (query) => {
+    setSearchQuery(query);
+    if (query.trim() === '') {
+      setFilteredBooks(books);
+    } else {
+      const lowercasedQuery = query.toLowerCase();
+      const filtered = books.filter(book => 
+        book.title.toLowerCase().includes(lowercasedQuery) ||
+        book.author.toLowerCase().includes(lowercasedQuery)
+      );
+      setFilteredBooks(filtered);
+    }
+  };
+
   const handleAddBook = () => {
     const bookToAdd = {
       ...newBook,
       id: books.length + 1,
       availableCopies: parseInt(newBook.totalCopies)
     };
-    setBooks([...books, bookToAdd]);
+    const updatedBooks = [...books, bookToAdd];
+    setBooks(updatedBooks);
+    setFilteredBooks(updatedBooks);
     setOpenDialog(false);
     resetForm();
   };
@@ -52,18 +72,22 @@ const CatalogManagement = () => {
   };
 
   const handleUpdateBook = () => {
-    setBooks(books.map(book => 
+    const updatedBooks = books.map(book => 
       book.id === editingBook.id 
         ? { ...newBook, availableCopies: parseInt(newBook.totalCopies) }
         : book
-    ));
+    );
+    setBooks(updatedBooks);
+    setFilteredBooks(updatedBooks);
     setOpenDialog(false);
     resetForm();
     setEditingBook(null);
   };
 
   const handleDeleteBook = (bookId) => {
-    setBooks(books.filter(book => book.id !== bookId));
+    const updatedBooks = books.filter(book => book.id !== bookId);
+    setBooks(updatedBooks);
+    setFilteredBooks(updatedBooks);
   };
 
   const resetForm = () => {
@@ -96,49 +120,80 @@ const CatalogManagement = () => {
           </Button>
         </Box>
 
+        {/* Search Box */}
+        <Box sx={{ mb: 3 }}>
+          <TextField
+            fullWidth
+            variant="outlined"
+            placeholder="Search books by title or author..."
+            value={searchQuery}
+            onChange={(e) => handleSearch(e.target.value)}
+            InputProps={{
+              startAdornment: (
+                <InputAdornment position="start">
+                  <Search />
+                </InputAdornment>
+              ),
+            }}
+            sx={{
+              '& .MuiOutlinedInput-root': {
+                borderRadius: 2,
+              }
+            }}
+          />
+        </Box>
+
         <Grid container spacing={3}>
-          {books.map((book) => (
-            <Grid item xs={12} md={6} lg={4} key={book.id}>
-              <Card variant="outlined">
-                <CardContent>
-                  <Typography variant="h6" gutterBottom>
-                    {book.title}
-                  </Typography>
-                  <Typography color="textSecondary" gutterBottom>
-                    by {book.author}
-                  </Typography>
-                  <Box sx={{ mb: 2 }}>
-                    <Typography variant="body2">
-                      <strong>DDC:</strong> {book.ddc}
+          {filteredBooks.length > 0 ? (
+            filteredBooks.map((book) => (
+              <Grid item xs={12} md={6} lg={4} key={book.id}>
+                <Card variant="outlined">
+                  <CardContent>
+                    <Typography variant="h6" gutterBottom>
+                      {book.title}
                     </Typography>
-                    <Typography variant="body2" sx={{ display: 'flex', alignItems: 'center', mt: 1 }}>
-                      <LocationOn fontSize="small" sx={{ mr: 1 }} />
-                      {book.location}
+                    <Typography color="textSecondary" gutterBottom>
+                      by {book.author}
                     </Typography>
-                    <Typography variant="body2">
-                      <strong>Copies:</strong> {book.availableCopies}/{book.totalCopies} available
-                    </Typography>
-                  </Box>
-                </CardContent>
-                <CardActions>
-                  <IconButton 
-                    size="small" 
-                    onClick={() => handleEditBook(book)}
-                    color="primary"
-                  >
-                    <Edit />
-                  </IconButton>
-                  <IconButton 
-                    size="small" 
-                    onClick={() => handleDeleteBook(book.id)}
-                    color="error"
-                  >
-                    <Delete />
-                  </IconButton>
-                </CardActions>
-              </Card>
+                    <Box sx={{ mb: 2 }}>
+                      <Typography variant="body2">
+                        <strong>DDC:</strong> {book.ddc}
+                      </Typography>
+                      <Typography variant="body2" sx={{ display: 'flex', alignItems: 'center', mt: 1 }}>
+                        <LocationOn fontSize="small" sx={{ mr: 1 }} />
+                        {book.location}
+                      </Typography>
+                      <Typography variant="body2">
+                        <strong>Copies:</strong> {book.availableCopies}/{book.totalCopies} available
+                      </Typography>
+                    </Box>
+                  </CardContent>
+                  <CardActions>
+                    <IconButton 
+                      size="small" 
+                      onClick={() => handleEditBook(book)}
+                      color="primary"
+                    >
+                      <Edit />
+                    </IconButton>
+                    <IconButton 
+                      size="small" 
+                      onClick={() => handleDeleteBook(book.id)}
+                      color="error"
+                    >
+                      <Delete />
+                    </IconButton>
+                  </CardActions>
+                </Card>
+              </Grid>
+            ))
+          ) : (
+            <Grid item xs={12}>
+              <Typography variant="h6" textAlign="center" color="textSecondary" sx={{ py: 4 }}>
+                No books found matching your search.
+              </Typography>
             </Grid>
-          ))}
+          )}
         </Grid>
       </Paper>
 
