@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import emailjs from '@emailjs/browser';
 import {
   Paper,
   Typography,
@@ -26,18 +27,17 @@ import {
   Grid,
   LinearProgress
 } from '@mui/material';
-import { 
-  Email, 
-  Sms, 
-  Notifications, 
-  Send, 
+import {
+  Email,
+  Sms,
+  Notifications,
+  Send,
   Warning,
   CheckCircle,
   Groups
 } from '@mui/icons-material';
 
 const NotificationManager = () => {
-  // All data defined inside the component
   const mockOverdueBooks = [
     {
       id: 1,
@@ -109,16 +109,10 @@ const NotificationManager = () => {
   const [bulkProgress, setBulkProgress] = useState(0);
 
   const overdueBooks = mockOverdueBooks;
-
-  // Get unique departments from overdue books
   const departments = [...new Set(overdueBooks.map(book => book.studentDepartment))];
+  const getOverdueStudentsByDepartment = (department) =>
+    overdueBooks.filter(book => book.studentDepartment === department);
 
-  // Get overdue students by department
-  const getOverdueStudentsByDepartment = (department) => {
-    return overdueBooks.filter(book => book.studentDepartment === department);
-  };
-
-  // Sample email templates
   const emailTemplates = {
     gentleReminder: `Dear {student_name},
 
@@ -187,11 +181,10 @@ College Library Administration
 `
   };
 
-  const getNotificationHistory = (studentId, bookId) => {
-    return sentNotifications.filter(notif => 
+  const getNotificationHistory = (studentId, bookId) =>
+    sentNotifications.filter(notif =>
       notif.studentId === studentId && notif.bookId === bookId
     );
-  };
 
   const handleSendNotification = (borrow) => {
     setSelectedStudent({
@@ -205,18 +198,12 @@ College Library Administration
       author: borrow.bookAuthor
     });
     setSelectedBorrow(borrow);
-    
-    // Select template based on days overdue
-    let template;
-    if (borrow.daysOverdue <= 7) {
-      template = emailTemplates.gentleReminder;
-    } else if (borrow.daysOverdue <= 14) {
-      template = emailTemplates.urgentReminder;
-    } else {
-      template = emailTemplates.finalWarning;
-    }
 
-    // Replace template variables
+    let template;
+    if (borrow.daysOverdue <= 7) template = emailTemplates.gentleReminder;
+    else if (borrow.daysOverdue <= 14) template = emailTemplates.urgentReminder;
+    else template = emailTemplates.finalWarning;
+
     const message = template
       .replace(/{student_name}/g, borrow.studentName)
       .replace(/{book_title}/g, borrow.bookTitle)
@@ -224,9 +211,7 @@ College Library Administration
       .replace(/{due_date}/g, borrow.dueDate)
       .replace(/{days_overdue}/g, borrow.daysOverdue);
 
-    // Add fine information without dollar symbol
     const messageWithFine = `${message}\n\nFine Amount: ${borrow.fineAmount}`;
-
     setCustomMessage(messageWithFine);
     setOpenDialog(true);
   };
@@ -238,20 +223,16 @@ College Library Administration
     }
 
     const departmentStudents = getOverdueStudentsByDepartment(selectedDepartment);
-    
     if (departmentStudents.length === 0) {
       setErrorAlert(`No overdue books found for ${selectedDepartment} department`);
       return;
     }
 
-    // Generate student list for the email
-    const studentList = departmentStudents.map(student => 
+    const studentList = departmentStudents.map(student =>
       `• ${student.studentName} (${student.studentEmail}) - "${student.bookTitle}" - Due: ${student.dueDate} - Days Overdue: ${student.daysOverdue} - Fine: ${student.fineAmount}`
     ).join('\n');
 
     const totalFines = departmentStudents.reduce((sum, student) => sum + student.fineAmount, 0);
-
-    // Generate department report message
     const message = emailTemplates.departmentReport
       .replace(/{department}/g, selectedDepartment)
       .replace(/{student_list}/g, studentList)
@@ -262,63 +243,155 @@ College Library Administration
     setOpenDepartmentDialog(true);
   };
 
-  // Mock email service function
-  const sendEmailNotification = async (studentEmail, studentName, bookDetails) => {
-    return new Promise((resolve) => {
-      setTimeout(() => {
-        console.log(`Email sent to ${studentEmail} for book "${bookDetails.title}"`);
-        resolve({ success: true, message: 'Notification sent successfully' });
-      }, 1000);
-    });
+  /** ---------- EMAILJS INTEGRATION STARTS HERE ---------- **/
+
+  const sendEmailNotification = async (studentEmail, studentName, bookDetails, messageContent) => {
+    try {
+      const templateParams = {
+        to_name: studentName,
+        to_email: studentEmail,
+        subject: `Library Overdue Notice - ${bookDetails.title}`,
+        message: messageContent
+      };
+
+      const result = await emailjs.send(
+        'service_wpna1jc',
+        'template_fleygfc',
+        templateParams,
+        'dolJchDKVTn_oqmkB'
+      );
+
+      console.log('EmailJS Response:', result.text);
+      return { success: true };
+    } catch (error) {
+      console.error('EmailJS Error:', error);
+      return { success: false, message: error.text || 'EmailJS sending failed' };
+    }
   };
 
-  // Mock department email service function
-  const sendDepartmentEmailNotification = async (department, message) => {
-    return new Promise((resolve) => {
-      setTimeout(() => {
-        console.log(`Department email sent for ${department}`);
-        resolve({ success: true, message: 'Department notification sent successfully' });
-      }, 1500);
-    });
+  const sendDepartmentEmailNotification = async (department, messageContent) => {
+    try {
+      const templateParams = {
+        to_name: `${department} Department Head`,
+        to_email: 'departmenthead@gmail.com', // You can dynamically assign later
+        subject: `Overdue Report - ${department} Department`,
+        message: messageContent
+      };
+
+      const result = await emailjs.send(
+        'service_wpna1jc',
+        'template_fleygfc',
+        templateParams,
+        'dolJchDKVTn_oqmkB'
+      );
+
+      console.log('Department Email Sent:', result.text);
+      return { success: true };
+    } catch (error) {
+      console.error('EmailJS Department Error:', error);
+      return { success: false, message: error.text || 'Department email failed' };
+    }
   };
 
-  // Mock bulk email service function
-  const sendBulkEmailNotifications = async (overdueList) => {
-    return new Promise((resolve) => {
-      setTimeout(() => {
-        const results = overdueList.map(student => ({
-          student: student.name,
-          success: true,
-          message: 'Notification sent successfully'
-        }));
-        resolve(results);
-      }, 2000);
-    });
+  /** ---------- BULK NOTIFICATIONS FUNCTION ---------- **/
+  const sendBulkNotifications = async () => {
+    if (overdueBooks.length === 0) return;
+    
+    setSending(true);
+    setBulkProgress(0);
+    setErrorAlert('');
+
+    let successCount = 0;
+    let failCount = 0;
+
+    for (let i = 0; i < overdueBooks.length; i++) {
+      const borrow = overdueBooks[i];
+      
+      try {
+        let template;
+        if (borrow.daysOverdue <= 7) template = emailTemplates.gentleReminder;
+        else if (borrow.daysOverdue <= 14) template = emailTemplates.urgentReminder;
+        else template = emailTemplates.finalWarning;
+
+        const message = template
+          .replace(/{student_name}/g, borrow.studentName)
+          .replace(/{book_title}/g, borrow.bookTitle)
+          .replace(/{book_author}/g, borrow.bookAuthor)
+          .replace(/{due_date}/g, borrow.dueDate)
+          .replace(/{days_overdue}/g, borrow.daysOverdue);
+
+        const messageWithFine = `${message}\n\nFine Amount: ${borrow.fineAmount}`;
+
+        const result = await sendEmailNotification(
+          borrow.studentEmail,
+          borrow.studentName,
+          {
+            id: borrow.bookId,
+            title: borrow.bookTitle,
+            author: borrow.bookAuthor
+          },
+          messageWithFine
+        );
+
+        if (result.success) {
+          successCount++;
+          const newNotification = {
+            id: sentNotifications.length + i + 1,
+            studentId: borrow.studentId,
+            bookId: borrow.bookId,
+            type: 'overdue',
+            message: messageWithFine,
+            sentDate: new Date().toISOString().split('T')[0],
+            method: 'email',
+            status: 'sent'
+          };
+          setSentNotifications(prev => [...prev, newNotification]);
+        } else {
+          failCount++;
+        }
+      } catch (error) {
+        failCount++;
+        console.error(`Failed to send to ${borrow.studentName}:`, error);
+      }
+
+      // Update progress
+      const progress = Math.round(((i + 1) / overdueBooks.length) * 100);
+      setBulkProgress(progress);
+    }
+
+    setSending(false);
+    setBulkProgress(0);
+
+    if (failCount === 0) {
+      setSuccessAlert(`✅ Successfully sent ${successCount} notifications!`);
+    } else if (successCount === 0) {
+      setErrorAlert(`❌ Failed to send all ${failCount} notifications`);
+    } else {
+      setSuccessAlert(`✅ Sent ${successCount} notifications, ${failCount} failed`);
+    }
+
+    setTimeout(() => {
+      setSuccessAlert('');
+      setErrorAlert('');
+    }, 5000);
   };
+
+  /** ---------- EMAILJS INTEGRATION ENDS HERE ---------- **/
 
   const sendNotification = async () => {
     if (!selectedStudent || !selectedBook || !selectedBorrow) return;
-
     setSending(true);
     setErrorAlert('');
 
     try {
-      const bookDetails = {
-        title: selectedBook.title,
-        author: selectedBook.author,
-        dueDate: selectedBorrow.dueDate,
-        daysOverdue: selectedBorrow.daysOverdue,
-        fineAmount: selectedBorrow.fineAmount
-      };
-
       const result = await sendEmailNotification(
         selectedStudent.email,
         selectedStudent.name,
-        bookDetails
+        selectedBook,
+        customMessage
       );
 
       if (result.success) {
-        // Add to notification history
         const newNotification = {
           id: sentNotifications.length + 1,
           studentId: selectedStudent.id,
@@ -330,14 +403,13 @@ College Library Administration
           status: 'sent'
         };
         setSentNotifications([...sentNotifications, newNotification]);
-
-        setSuccessAlert(`✅ Notification sent to ${selectedStudent.name} via ${notificationMethod}`);
+        setSuccessAlert(`✅ Email sent to ${selectedStudent.name}`);
         setOpenDialog(false);
       } else {
-        setErrorAlert(`❌ Failed to send notification: ${result.message}`);
+        setErrorAlert(`❌ Failed: ${result.message}`);
       }
     } catch (error) {
-      setErrorAlert(`❌ Error sending notification: ${error.message}`);
+      setErrorAlert(`❌ Error: ${error.message}`);
     } finally {
       setSending(false);
       setTimeout(() => {
@@ -349,15 +421,12 @@ College Library Administration
 
   const sendDepartmentNotification = async () => {
     if (!selectedDepartment) return;
-
     setSending(true);
     setErrorAlert('');
 
     try {
       const result = await sendDepartmentEmailNotification(selectedDepartment, departmentMessage);
-
       if (result.success) {
-        // Add to notification history for each student in the department
         const departmentStudents = getOverdueStudentsByDepartment(selectedDepartment);
         const newNotifications = departmentStudents.map((student, index) => ({
           id: sentNotifications.length + index + 1,
@@ -370,76 +439,18 @@ College Library Administration
           status: 'sent'
         }));
         setSentNotifications([...sentNotifications, ...newNotifications]);
-
-        setSuccessAlert(`✅ Department notification sent for ${selectedDepartment} (${departmentStudents.length} students)`);
+        setSuccessAlert(`✅ Department email sent for ${selectedDepartment}`);
         setOpenDepartmentDialog(false);
-        setSelectedDepartment('');
       } else {
-        setErrorAlert(`❌ Failed to send department notification: ${result.message}`);
+        setErrorAlert(`❌ Failed to send: ${result.message}`);
       }
     } catch (error) {
-      setErrorAlert(`❌ Error sending department notification: ${error.message}`);
+      setErrorAlert(`❌ Error: ${error.message}`);
     } finally {
       setSending(false);
       setTimeout(() => {
         setSuccessAlert('');
         setErrorAlert('');
-      }, 5000);
-    }
-  };
-
-  const sendBulkNotifications = async () => {
-    setSending(true);
-    setBulkProgress(0);
-    setErrorAlert('');
-
-    const bulkData = overdueBooks.map(borrow => ({
-      email: borrow.studentEmail,
-      name: borrow.studentName,
-      bookDetails: {
-        title: borrow.bookTitle,
-        author: borrow.bookAuthor,
-        dueDate: borrow.dueDate,
-        daysOverdue: borrow.daysOverdue,
-        fineAmount: borrow.fineAmount
-      }
-    }));
-
-    try {
-      // Simulate progress
-      setBulkProgress(50);
-      const results = await sendBulkEmailNotifications(bulkData);
-      setBulkProgress(100);
-      
-      const successful = results.filter(r => r.success).length;
-      const failed = results.filter(r => !r.success).length;
-
-      // Add to notification history
-      const newNotifications = overdueBooks.map((borrow, index) => ({
-        id: sentNotifications.length + index + 1,
-        studentId: borrow.studentId,
-        bookId: borrow.bookId,
-        type: 'overdue',
-        message: `Bulk notification for overdue book: ${borrow.bookTitle}`,
-        sentDate: new Date().toISOString().split('T')[0],
-        method: 'email',
-        status: 'sent'
-      }));
-      setSentNotifications([...sentNotifications, ...newNotifications]);
-
-      setSuccessAlert(`📧 Bulk notifications completed: ${successful} sent, ${failed} failed`);
-      
-      if (failed > 0) {
-        setErrorAlert(`Some notifications failed to send. Check console for details.`);
-      }
-    } catch (error) {
-      setErrorAlert(`❌ Bulk sending failed: ${error.message}`);
-    } finally {
-      setSending(false);
-      setTimeout(() => {
-        setSuccessAlert('');
-        setErrorAlert('');
-        setBulkProgress(0);
       }, 5000);
     }
   };
@@ -562,31 +573,7 @@ College Library Administration
           </Card>
 
           {/* Email Templates Quick Select */}
-          <Card sx={{ mt: 2 }}>
-            <CardContent>
-              <Typography variant="h6" gutterBottom>
-                Quick Templates
-              </Typography>
-              
-              <Button
-                variant="outlined"
-                size="small"
-                fullWidth
-                sx={{ mb: 1 }}
-                onClick={() => setCustomMessage(emailTemplates.urgentReminder)}
-              >
-                Urgent Reminder
-              </Button>
-              <Button
-                variant="outlined"
-                size="small"
-                fullWidth
-                onClick={() => setCustomMessage(emailTemplates.finalWarning)}
-              >
-                Final Warning
-              </Button>
-            </CardContent>
-          </Card>
+          
         </Grid>
 
         {/* Overdue Books List */}
